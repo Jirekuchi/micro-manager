@@ -26,8 +26,10 @@
 const char* g_DeviceNameArduinoHub = "Arduino-Hub";
 const char* g_DeviceNameArduinoSwitch = "Arduino-Switch";
 const char* g_DeviceNameArduinoShutter = "Arduino-Shutter";
-const char* g_DeviceNameArduinoDA1 = "Arduino-DAC1";
-const char* g_DeviceNameArduinoDA2 = "Arduino-DAC2";
+const char* g_DeviceNameArduinoDA1 = "Arduino-DAC1_Ch1";
+const char* g_DeviceNameArduinoDA2 = "Arduino-DAC1_Ch2";
+const char* g_DeviceNameArduinoDA3 = "Arduino-DAC2_Ch1";
+const char* g_DeviceNameArduinoDA4 = "Arduino-DAC2_Ch2";
 const char* g_DeviceNameArduinoInput = "Arduino-Input";
 
 
@@ -52,8 +54,10 @@ MODULE_API void InitializeModuleData()
    RegisterDevice(g_DeviceNameArduinoHub, MM::HubDevice, "Hub (required)");
    RegisterDevice(g_DeviceNameArduinoSwitch, MM::StateDevice, "Digital out 8-bit");
    RegisterDevice(g_DeviceNameArduinoShutter, MM::ShutterDevice, "Shutter");
-   RegisterDevice(g_DeviceNameArduinoDA1, MM::SignalIODevice, "DAC channel 1");
-   RegisterDevice(g_DeviceNameArduinoDA2, MM::SignalIODevice, "DAC channel 2");
+   RegisterDevice(g_DeviceNameArduinoDA1, MM::SignalIODevice, "DAC1 channel 1");
+   RegisterDevice(g_DeviceNameArduinoDA2, MM::SignalIODevice, "DAC1 channel 2");
+   RegisterDevice(g_DeviceNameArduinoDA3, MM::SignalIODevice, "DAC2 channel 1");
+   RegisterDevice(g_DeviceNameArduinoDA4, MM::SignalIODevice, "DAC2 channel 2");
    RegisterDevice(g_DeviceNameArduinoInput, MM::GenericDevice, "ADC");
 }
 
@@ -76,11 +80,19 @@ MODULE_API MM::Device* CreateDevice(const char* deviceName)
    }
    else if (strcmp(deviceName, g_DeviceNameArduinoDA1) == 0)
    {
-      return new CArduinoDA(1); // channel 1
+      return new CArduinoDA(1); // channel 1 (DAC1_1)
    }
    else if (strcmp(deviceName, g_DeviceNameArduinoDA2) == 0)
    {
-      return new CArduinoDA(2); // channel 2
+      return new CArduinoDA(2); // channel 2 (DAC1_2)
+   }
+   else if (strcmp(deviceName, g_DeviceNameArduinoDA3) == 0)
+   {
+      return new CArduinoDA(3); // channel 3 (DAC2_1)
+   }
+   else if (strcmp(deviceName, g_DeviceNameArduinoDA4) == 0)
+   {
+      return new CArduinoDA(4); // channel 4 (DAC2_2)
    }
    else if (strcmp(deviceName, g_DeviceNameArduinoInput) == 0)
    {
@@ -299,6 +311,8 @@ int CArduinoHub::DetectInstalledDevices()
       peripherals.push_back(g_DeviceNameArduinoInput);
       peripherals.push_back(g_DeviceNameArduinoDA1);
       peripherals.push_back(g_DeviceNameArduinoDA2);
+	  peripherals.push_back(g_DeviceNameArduinoDA3);
+	  peripherals.push_back(g_DeviceNameArduinoDA4);
       for (size_t i=0; i < peripherals.size(); i++) 
       {
          MM::Device* pDev = ::CreateDevice(peripherals[i].c_str());
@@ -996,7 +1010,7 @@ CArduinoDA::CArduinoDA(int channel) :
       volts_(0.0),
       gatedVolts_(0.0),
       channel_(channel), 
-      maxChannel_(2),
+      maxChannel_(4),
       gateOpen_(true)
 {
    InitializeDefaultErrorMessages();
@@ -1020,9 +1034,14 @@ CArduinoDA::CArduinoDA(int channel) :
 
    CPropertyAction* pAct = new CPropertyAction(this, &CArduinoDA::OnMaxVolt);
    CreateProperty("MaxVolt", "5.0", MM::Float, false, pAct, true);
-
-   name_ = channel_ == 1 ? g_DeviceNameArduinoDA1 : g_DeviceNameArduinoDA2;
-
+   
+   if (channel <= 2) 
+   {
+	   name_ = channel_ == 1 ? g_DeviceNameArduinoDA1 : g_DeviceNameArduinoDA2;
+   } else 
+   {
+	   name_ = channel_ == 3 ? g_DeviceNameArduinoDA3 : g_DeviceNameArduinoDA4;
+   }
    // Description
    int nRet = CreateProperty(MM::g_Keyword_Description, "Arduino DAC driver", MM::String, true);
    assert(DEVICE_OK == nRet);
