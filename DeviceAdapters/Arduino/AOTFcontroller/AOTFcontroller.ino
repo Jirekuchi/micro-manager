@@ -18,7 +18,7 @@
  *   Controller will return 2p.  Where p is the current digital output pattern
  *
  * Set Analogue output command: 3xvv
- *   Where x is the output channel (either 1 or 2), and vv is the output in a 
+ *   Where x is the output channel (1, 2, 3, or 4), and vv is the output in a 
  *   12-bit significant number.
  *   Controller will return 3xvv:
  *
@@ -115,8 +115,10 @@
    int dataPin = 3;
    // pin connected to SCLK of TLV5618
    int clockPin = 4;
-   // pin connected to CS of TLV5618
+   // pin connected to CS of TLV5618 #1
    int latchPin = 5;
+   // pin connected to CS of TLV5618 #2
+   int latchPin2 = 6;
 
    const int SEQUENCELENGTH = 12;  // this should be good enough for everybody;)
    byte triggerPattern_[SEQUENCELENGTH] = {0,0,0,0,0,0,0,0,0,0,0,0};
@@ -141,6 +143,7 @@
    pinMode (dataPin, OUTPUT);
    pinMode (clockPin, OUTPUT);
    pinMode (latchPin, OUTPUT);
+   pinMode (latchPin2, OUTPUT);
    pinMode(8, OUTPUT);
    pinMode(9, OUTPUT);
    pinMode(10, OUTPUT);
@@ -153,7 +156,8 @@
    // Turn on build-in pull-up resistors
    PORTC = PORTC | B00111111;
    
-   digitalWrite(latchPin, HIGH);   
+   digitalWrite(latchPin, HIGH);  
+   digitalWrite(latchPin2, HIGH); 
  }
  
  void loop() {
@@ -425,25 +429,40 @@ bool waitForSerial(unsigned long timeOut)
  }
 
 // Sets analogue output in the TLV5618
-// channel is either 0 ('A') or 1 ('B')
+// channel is 0 ('A1'), 1 ('B1'), 2 ('A2'), or 3 ('B2')
 // value should be between 0 and 4095 (12 bit max)
 // pins should be connected as described above
 void analogueOut(int channel, byte msb, byte lsb) 
 {
-  digitalWrite(latchPin, LOW);
-  msb &= B00001111;
-  if (channel == 0)
-     msb |= B10000000;
-  // Note that in all other cases, the data will be written to DAC B and BUFFER
-  shiftOut(dataPin, clockPin, MSBFIRST, msb);
-  shiftOut(dataPin, clockPin, MSBFIRST, lsb);
-  // The TLV5618 needs one more toggle of the clockPin:
-  digitalWrite(clockPin, HIGH);
-  digitalWrite(clockPin, LOW);
-  digitalWrite(latchPin, HIGH);
+  // If channel 1 or 2 (DAC1, send as 0 or 1) is selected,
+  // run normal code with latchPin = 5
+  if (channel <= 1) {
+     digitalWrite(latchPin, LOW);
+     msb &= B00001111;
+     if (channel == 0)
+        msb |= B10000000;
+     // Note that in all other cases, the data will be written to DAC B and BUFFER
+     shiftOut(dataPin, clockPin, MSBFIRST, msb);
+     shiftOut(dataPin, clockPin, MSBFIRST, lsb);
+     // The TLV5618 needs one more toggle of the clockPin:
+     digitalWrite(clockPin, HIGH);
+     digitalWrite(clockPin, LOW);
+     digitalWrite(latchPin, HIGH);
+  // otherwise send data to latchPin2 = 6  
+  } else {
+     digitalWrite(latchPin2, LOW);
+     msb &= B00001111;
+     if (channel == 2)
+        msb |= B10000000;
+     // Note that in all other cases, the data will be written to DAC B and BUFFER
+     shiftOut(dataPin, clockPin, MSBFIRST, msb);
+     shiftOut(dataPin, clockPin, MSBFIRST, lsb);
+     // The TLV5618 needs one more toggle of the clockPin:
+     digitalWrite(clockPin, HIGH);
+     digitalWrite(clockPin, LOW);
+     digitalWrite(latchPin2, HIGH);
+  }
 }
-
-
 
 /* 
  // This function is called through an interrupt   
@@ -478,5 +497,3 @@ void blankInverted()
 
 */
   
-
-
